@@ -4,6 +4,7 @@ import threading
 
 
 class OrderInfo(object):
+    # class for single order
     def __init__(self, orderRef=0, priceType=PHX_FTDC_OPT_LimitPrice,
                  direction=PHX_FTDC_D_Buy, offset=PHX_FTDC_OF_Open, price=0, volume=0, InstrumentID=""):
         self.Direction = direction
@@ -57,9 +58,12 @@ class Snapshot(object):
 
 
 class OrderList:
+    # class for orders with the same direction
     def __init__(self, is_bid=True):
+        # bid: buy
         self._value_lock = threading.Lock()
         self._queue = []
+        # _index: current number of orders
         self._index = 0
         self.priority_multiplier = 1
         if is_bid:
@@ -72,12 +76,14 @@ class OrderList:
         self._index += 1
 
     def get_best_order(self):
+        # lowest price for bid, vise visa
         with self._value_lock:
             if self.is_empty():
                 return None
             return self._queue[0][-1]
 
     def remove(self):
+        # FIFO
         with self._value_lock:
             if self.is_empty():
                 return None
@@ -116,6 +122,7 @@ class OrderList:
 
 
 def insert_order(order_list, price, ref):
+    # ref for selection
     order = OrderInfo()
     order.LimitPrice = price
     order.OrderLocalID = ref

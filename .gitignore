@@ -11,3 +11,4 @@ build/
 *.s
 core.*
 */*/__pycache__
+pyclient/test/commands.txt

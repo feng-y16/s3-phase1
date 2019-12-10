@@ -29,6 +29,7 @@ class MyClient(CPhxFtdcTraderSpi):
         self.m_Passwd = '123456'
         self.m_LoginStatus = [False, False, False, False]
         self.query_status = False
+        # is_any_updated: if any market data is update
         self.is_any_updated = False
         self.game_status = None
         self.ins2om = {}
@@ -114,6 +115,7 @@ class MyClient(CPhxFtdcTraderSpi):
         # print('OnRtnGameStatus, data=%s' % json.dumps(pGameStatus.__dict__))
         self.game_status = pGameStatus
 
+    # use given market data to update self.md_list
     def OnRtnMarketData(self, pMarketData: CPhxFtdcDepthMarketDataField):
         if pMarketData.InstrumentID in self.ins2index:
             # print('OnRtnMarketData, data=%s' % json.dumps(pMarketData.__dict__))
@@ -170,6 +172,7 @@ class MyClient(CPhxFtdcTraderSpi):
             self.query_status = True
             print("init trade query over")
 
+    # wait for all the tings are true in condition, after timeout seconds
     def timeout_wait(self, timeout, condition=None):
         while timeout > 0:
             time.sleep(1)
@@ -222,6 +225,7 @@ class MyClient(CPhxFtdcTraderSpi):
             return False
         return True
 
+    # check if connection is fine
     def background_thread(self):
         print("start background thread")
         last_time = time.time()
@@ -299,6 +303,7 @@ class MyClient(CPhxFtdcTraderSpi):
 
 
 if __name__ == '__main__':
+    # read arguments from command line
     parser = OptionParser()
     parser.add_option("-i", "--ip", dest="ip", help="server ip")
     parser.add_option("-p", "--port", dest="port", help="server ip")
@@ -318,7 +323,7 @@ if __name__ == '__main__':
         user_id = int(options.user_id)
     if options.password:
         password = options.password
-
+    # creat client，pass input arguments
     client = MyClient()
     client.serverHost = server_ip
     client.serverOrderPort = order_port
@@ -327,11 +332,17 @@ if __name__ == '__main__':
     client.serverMDPort = order_port + 3
     client.m_UserID = user_id
     client.m_Passwd = password
-
+    # run client
     if client.Init():
+        # initialization
         print("init success")
         resetted = True
         while True:
+            # game_status is None/0: not started
+            # 1: can run strategy (reset rest flag first)
+            # 2: game settling
+            # 3: game settled, waiting for next round (need reset)
+            # 3: game finished
             if client.game_status is None or (not client.m_pUserApi.all_connected):
                 print("server not started")
                 time.sleep(1)

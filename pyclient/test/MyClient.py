@@ -12,6 +12,17 @@ from random import randint, random
 from test.OrderList import OrderList, OrderInfo, Snapshot
 import threading
 import copy
+import pdb
+
+
+# 买
+PHX_FTDC_D_Buy = '0'
+# 卖
+PHX_FTDC_D_Sell = '1'
+# 开仓
+PHX_FTDC_OF_Open = '0'
+# 平仓
+PHX_FTDC_OF_Close = '1'
 
 
 class MyClient(CPhxFtdcTraderSpi):
@@ -301,6 +312,39 @@ class MyClient(CPhxFtdcTraderSpi):
 
         self.is_any_updated = False  # reset flag
 
+    def make_market(self, ins_idx, spread, expected_price=None):
+        # fixed spread, maximum one order on each side
+        ins = self.instruments[ins_idx]
+        om = self.ins2om[ins.InstrumentID]
+        field = CPhxFtdcDepthMarketDataField()
+        field.InstrumentID = ins.InstrumentID
+        self.OnRtnMarketData(field)
+        print(field.__str__())
+        if field.BidVolume1 == 0:
+            if expected_price:
+                order = om.place_limit_order(self.next_order_ref(), '1', '0',
+                                             expected_price + spread / 2, 10)
+                self.send_input_order(order)
+                order = om.place_limit_order(self.next_order_ref(), '0', '0',
+                                             expected_price - spread / 2, 10)
+                self.send_input_order(order)
+            return
+        elif field.AskVolume1 == 0:
+            order = om.place_limit_order(self.next_order_ref(), '1', '0',
+                                         field.BidPrice1 + spread, 10)
+            self.send_input_order(order)
+        else:
+            if field.AskPrice1 - field.BidPrice1 > spread:
+                mean_price = (field.AskPrice1 + field.BidPrice1) / 2
+                order = om.place_limit_order(self.next_order_ref(), '1', '0',
+                                             mean_price + spread / 2, 10)
+                self.send_input_order(order)
+                order = om.place_limit_order(self.next_order_ref(), '0', '0',
+                                             mean_price - spread / 2, 10)
+                self.send_input_order(order)
+            else:
+                return
+
 
 if __name__ == '__main__':
     # read arguments from command line
@@ -351,8 +395,10 @@ if __name__ == '__main__':
                 time.sleep(1)
             elif client.game_status.GameStatus == 1:
                 resetted = False
-                client.run_strategy()
-                time.sleep(0.5)
+                # client.run_strategy()
+                client.m_pUserApi.ReqQryTradingAccount(CPhxFtdcQryClientAccountField(), client.next_request_id())
+                client.make_market(30, 0.005, 0.33)
+                time.sleep(5)
             elif client.game_status.GameStatus == 2:
                 print("game settling")
                 time.sleep(1)

@@ -245,9 +245,9 @@ class MyClient(CPhxFtdcTraderSpi):
             t = time.time()
             if t - last_time > 5 and self.m_pUserApi.all_connected:
                 last_time = t
-                ret = self.m_pUserApi.ReqQryTradingAccount(field, self.next_request_id())
-                if not ret:
-                    print("ReqQryTradingAccount failed")
+                # ret = self.m_pUserApi.ReqQryTradingAccount(field, self.next_request_id())
+                # if not ret:
+                # print("ReqQryTradingAccount failed")
             time.sleep(1)
 
     def random_direction(self):
@@ -325,25 +325,39 @@ class MyClient(CPhxFtdcTraderSpi):
                 order = om.place_limit_order(self.next_order_ref(), '1', '0',
                                              expected_price + spread / 2, 10)
                 self.send_input_order(order)
+                om.on_rtn_order(order)
                 order = om.place_limit_order(self.next_order_ref(), '0', '0',
                                              expected_price - spread / 2, 10)
                 self.send_input_order(order)
+                om.on_rtn_order(order)
             return
         elif field.AskVolume1 == 0:
             order = om.place_limit_order(self.next_order_ref(), '1', '0',
                                          field.BidPrice1 + spread, 10)
             self.send_input_order(order)
+            om.on_rtn_order(order)
         else:
             if field.AskPrice1 - field.BidPrice1 > spread:
                 mean_price = (field.AskPrice1 + field.BidPrice1) / 2
                 order = om.place_limit_order(self.next_order_ref(), '1', '0',
                                              mean_price + spread / 2, 10)
                 self.send_input_order(order)
+                om.on_rtn_order(order)
                 order = om.place_limit_order(self.next_order_ref(), '0', '0',
                                              mean_price - spread / 2, 10)
                 self.send_input_order(order)
+                om.on_rtn_order(order)
             else:
                 return
+
+    def get_history(self, index):
+        ins = self.instruments[index]
+        field = CPhxFtdcDepthMarketDataField()
+        field.InstrumentID = ins.InstrumentID
+        self.OnRtnMarketData(field)
+        time.sleep(0.1)
+        if field.BidVolume1 > 0 or field.AskVolume1 > 0:
+            print(field.__str__())
 
 
 if __name__ == '__main__':
@@ -397,8 +411,10 @@ if __name__ == '__main__':
                 resetted = False
                 # client.run_strategy()
                 client.m_pUserApi.ReqQryTradingAccount(CPhxFtdcQryClientAccountField(), client.next_request_id())
-                client.make_market(30, 0.005, 0.33)
-                time.sleep(5)
+                client.make_market(72, 0.005, 10)
+                # for i in range(0, 73):
+                # client.get_history(i)
+                time.sleep(3)
             elif client.game_status.GameStatus == 2:
                 print("game settling")
                 time.sleep(1)
